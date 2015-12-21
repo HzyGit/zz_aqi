@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE db [
+<!ELEMENT db (user,passwd,host,name)>
+<!ELEMENT user (#PCDATA)>
+<!ELEMENT passwd (#PCDATA)>
+<!ELEMENT host (#PCDATA)>
+<!ELEMENT name (#PCDATA)>
+]>
+
+<db>
+	<user>hzy</user>
+	<passwd></passwd>
+	<host>localhost</host>
+	<name>aqi</name>
+</db>

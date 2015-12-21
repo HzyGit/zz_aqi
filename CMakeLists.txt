@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 2.6)
+project(zz_aqi CXX)
+set(CMAKE_CXX_FLAGS -std=c++11)
+add_executable(zz_aqi zz_aqi.cpp)
+include_directories(/usr/include/libxml2)
+target_link_libraries(zz_aqi xml2 curl)

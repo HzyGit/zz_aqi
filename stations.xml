@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE stations[
+<!ELEMENT stations (station*)>
+<!ELEMENT station (id,name)>
+<!ELEMENT id (#PCDATA)>
+<!ELEMENT name (#PCDATA)>
+]>
+<stations>
+	<station>
+		<id>1</id>
+		<name>市监测站</name>
+	</station>
+	<station>
+		<id>2</id>
+		<name>烟厂</name>
+	</station>
+	<station>
+		<id>3</id>
+		<name>河医大</name>
+	</station>
+	<station>
+		<id>4</id>
+		<name>郑纺机</name>
+	</station>
+	<station>
+		<id>5</id>
+		<name>银行学校</name>
+	</station>
+	<station>
+		<id>6</id>
+		<name>供水公司</name>
+	</station>
+	<station>
+		<id>7</id>
+		<name>岗里水库</name>
+	</station>
+	<station>
+		<id>8</id>
+		<name>经开区管委</name>
+	</station>
+	<station>
+		<id>9</id>
+		<name>四十七中</name>
+	</station>
+	<station>
+		<id>0</id>
+		<name>全市</name>
+	</station>
+</stations>
+
