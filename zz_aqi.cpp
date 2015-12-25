@@ -12,6 +12,8 @@
 #include <sstream>
 #include <iostream>
 
+#include <mysql++.h>
+
 /// @brief 站点类
 class Station{
 	public:
@@ -130,6 +132,11 @@ struct AQIUint{
 
 	friend std::ostream & operator << (std::ostream &os,const AQIUint &uint);
 
+	std::string gen_sql(const std::string &id)const ;
+
+	private:
+		std::string time_to_string(time_t t) const;
+
 };
 
 class AQIJsonParser {
@@ -137,6 +144,31 @@ class AQIJsonParser {
 		bool parse(const std::string &str,AQIUint &uint);
 	private:
 		time_t get_time(const std::string &str);
+};
+
+class AQIWriter {
+	public:
+		AQIWriter(const std::string &confpath);
+		void writer(const AQIUint &uint,const std::string &id);
+		AQIWriter(AQIWriter &w)=delete;
+		AQIWriter & operator =(AQIWriter &w)=delete;
+	private:
+		mysqlpp::Connection _conn;
+		DbConf _dbconf;
+};
+
+/// @brief 获取aqi数据并写入数据库
+class RecorderAQI {
+	public:
+		RecorderAQI(){}
+		void load_station_set(const std::string &path);
+		void record(AQIWriter &wirter);
+		RecorderAQI(const RecorderAQI &re)=delete;
+		RecorderAQI& operator =(RecorderAQI &re)=delete;
+	private:
+		StationSet _set;
+		AQIUrl _url;
+		AQIJsonParser _parser;
 };
 
 static void test(){
@@ -152,12 +184,17 @@ static void test(){
 		parser.parse(json,uint);
 		std::cout<<"name:"<<it->get_name()<<"\n";
 		std::cout<<uint<<"\n";
-		std::cout<<"=========================\n";
+		std::cout<<"sql:\n";
+		std::cout<<uint.gen_sql(it->get_id());
+		std::cout<<"\n=========================\n";
 	}
 }
 
 int main(int argc,char **argv){
-	test();
+	RecorderAQI re;
+	re.load_station_set("stations.xml");
+	AQIWriter writer("db.xml");
+	re.record(writer);
 }
 
 std::ostream & operator << (std::ostream &os,const AQIUint &uint){
@@ -173,6 +210,62 @@ std::ostream & operator << (std::ostream &os,const AQIUint &uint){
 	os<<"no2:"<<uint.no2<<"-"<<uint.no2_aqi<<" ";
 }
 
+//////////////RecoderAQI类实现////////////
+void RecorderAQI::load_station_set(const std::string &path){
+	_set.load_stations(path);
+}
+
+void RecorderAQI::record(AQIWriter &writer){
+	for(auto it=_set._stations.begin();it!=_set._stations.end();++it){
+		std::string json;
+		this->_url.get_aqi_data(*it,json);
+		json.push_back('\0');
+		AQIUint uint;
+		this->_parser.parse(json,uint);
+		writer.writer(uint,it->get_id());
+	}
+}
+
+//////////////AQIWrtier类实现///////////////
+AQIWriter::AQIWriter(const std::string &confpath) {
+	_dbconf.load_db_conf(confpath);
+	_conn.connect(_dbconf.get_db_name().c_str(),
+				_dbconf.get_db_host().c_str(),
+				_dbconf.get_db_user().c_str(),
+				_dbconf.get_db_passwd().c_str());
+}
+
+void AQIWriter::writer(const AQIUint &uint,const std::string & id){
+	mysqlpp::Query query=_conn.query(uint.gen_sql(id).c_str());
+	query.execute();
+}
+
+//////////////AQIUint类实现//////////////////
+std::string AQIUint::time_to_string(time_t t) const {
+	struct tm* tt=localtime(&t);
+	std::ostringstream sout;
+	sout<<tt->tm_year+1900<<"-"
+		<<tt->tm_mon+1<<"-"
+		<<tt->tm_mday<<" "
+		<<tt->tm_hour<<":"
+		<<tt->tm_min<<":"
+		<<tt->tm_sec;
+	return sout.str();
+}
+
+std::string AQIUint::gen_sql(const std::string& id) const {
+	std::string str="insert into aqi_data values(";
+	str+="'"+id+"',";
+	str+="'"+time_to_string(time)+"',";
+	str+=std::to_string(o3)+","+std::to_string(o3_aqi)+",";
+	str+=std::to_string(co)+","+std::to_string(co_aqi)+",";
+	str+=std::to_string(so2)+","+std::to_string(so2_aqi)+",";
+	str+=std::to_string(no2)+","+std::to_string(so2_aqi)+",";
+	str+=std::to_string(pm10)+","+std::to_string(pm10_aqi)+",";
+	str+=std::to_string(pm25)+","+std::to_string(pm25_aqi)+",";
+	str+=std::to_string(aqi)+");";
+	return str;
+}
 
 //////////////AQIJsonParser类实现/////////////
 bool AQIJsonParser::parse(const std::string &json,AQIUint &uint){

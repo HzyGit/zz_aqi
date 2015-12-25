@@ -88,6 +88,7 @@ SET character_set_client = utf8;
 /*!50001 CREATE TABLE `station_aqi` (
   `station_name` tinyint NOT NULL,
   `station_id` tinyint NOT NULL,
+  `create_time` tinyint NOT NULL,
   `aqi` tinyint NOT NULL,
   `o3` tinyint NOT NULL,
   `o3_aqi` tinyint NOT NULL,
@@ -118,7 +119,7 @@ SET character_set_client = @saved_cs_client;
 /*!50001 SET collation_connection      = utf8_general_ci */;
 /*!50001 CREATE ALGORITHM=UNDEFINED */
 /*!50013 DEFINER=`root`@`localhost` SQL SECURITY DEFINER */
-/*!50001 VIEW `station_aqi` AS select `station`.`name` AS `station_name`,`station`.`id` AS `station_id`,`aqi_data`.`aqi` AS `aqi`,`aqi_data`.`o3` AS `o3`,`aqi_data`.`o3_aqi` AS `o3_aqi`,`aqi_data`.`co` AS `co`,`aqi_data`.`co_aqi` AS `co_aqi`,`aqi_data`.`so2` AS `so2`,`aqi_data`.`so2_aqi` AS `so2_aqi`,`aqi_data`.`no2` AS `no2`,`aqi_data`.`no2_aqi` AS `no2_aqi`,`aqi_data`.`pm10` AS `pm10`,`aqi_data`.`pm10_aqi` AS `pm10_aqi`,`aqi_data`.`pm25` AS `pm25`,`aqi_data`.`pm25_aqi` AS `pm25_aqi` from (`station` join `aqi_data` on((`station`.`id` = `aqi_data`.`station_id`))) */
+/*!50001 VIEW `station_aqi` AS select `station`.`name` AS `station_name`,`station`.`id` AS `station_id`,`aqi_data`.`create_time` AS `create_time`,`aqi_data`.`aqi` AS `aqi`,`aqi_data`.`o3` AS `o3`,`aqi_data`.`o3_aqi` AS `o3_aqi`,`aqi_data`.`co` AS `co`,`aqi_data`.`co_aqi` AS `co_aqi`,`aqi_data`.`so2` AS `so2`,`aqi_data`.`so2_aqi` AS `so2_aqi`,`aqi_data`.`no2` AS `no2`,`aqi_data`.`no2_aqi` AS `no2_aqi`,`aqi_data`.`pm10` AS `pm10`,`aqi_data`.`pm10_aqi` AS `pm10_aqi`,`aqi_data`.`pm25` AS `pm25`,`aqi_data`.`pm25_aqi` AS `pm25_aqi` from (`station` join `aqi_data` on((`station`.`id` = `aqi_data`.`station_id`))) */
 /*!50002 WITH CASCADED CHECK OPTION */;
 /*!50001 SET character_set_client      = @saved_cs_client */;
 /*!50001 SET character_set_results     = @saved_cs_results */;
@@ -133,4 +134,4 @@ SET character_set_client = @saved_cs_client;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2015-12-22  2:36:39
+-- Dump completed on 2015-12-25 13:54:42
