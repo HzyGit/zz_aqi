@@ -5,6 +5,7 @@
 #include <libxml/parser.h>
 #include <time.h>
 #include <curl/curl.h>
+#include <rapidjson/document.h>
 
 #include <string>
 #include <list>
@@ -56,7 +57,7 @@ class AQIUrl{
 			_curl=NULL;
 			_curl=curl_easy_init();
 			long on=1;
-			curl_easy_setopt(_curl,CURLOPT_VERBOSE,&on);
+			//curl_easy_setopt(_curl,CURLOPT_VERBOSE,&on);
 		}
 		~AQIUrl(){
 			if(NULL!=_curl)
@@ -111,17 +112,131 @@ class DbConf{
 		std::string _passwd; ///< 登陆密码
 };
 
+struct AQIUint{
+	time_t time;
+	unsigned int aqi;
+	double pm25;
+	unsigned int pm25_aqi;
+	double pm10;
+	unsigned int pm10_aqi;
+	double o3;
+	unsigned int o3_aqi;
+	double co;
+	unsigned int co_aqi;
+	double so2;
+	unsigned int so2_aqi;
+	double no2;
+	unsigned int no2_aqi;
+
+	friend std::ostream & operator << (std::ostream &os,const AQIUint &uint);
+
+};
+
+class AQIJsonParser {
+	public:
+		bool parse(const std::string &str,AQIUint &uint);
+	private:
+		time_t get_time(const std::string &str);
+};
+
 static void test(){
-	DbConf db;
-	db.load_db_conf("db.xml");
-	std::cout<<"host:"<<db.get_db_host()<<std::endl;
-	std::cout<<"user:"<<db.get_db_user()<<std::endl;
-	std::cout<<"name:"<<db.get_db_name()<<std::endl;
-	std::cout<<"passwd:"<<db.get_db_passwd()<<std::endl;
+	StationSet set;
+	set.load_stations("stations.xml");
+	AQIUrl url;
+	for(auto it=set._stations.begin();it!=set._stations.end();++it){
+		std::string json;
+		url.get_aqi_data(*it,json);
+		json.push_back('\0');
+		AQIUint uint;
+		AQIJsonParser parser;
+		parser.parse(json,uint);
+		std::cout<<"name:"<<it->get_name()<<"\n";
+		std::cout<<uint<<"\n";
+		std::cout<<"=========================\n";
+	}
 }
 
 int main(int argc,char **argv){
 	test();
+}
+
+std::ostream & operator << (std::ostream &os,const AQIUint &uint){
+	struct tm *t=localtime(&uint.time);
+	os<<t->tm_year+1900<<"-"<<t->tm_mon+1<<"-"<<t->tm_mday<<" "
+		<<t->tm_hour<<":"<<t->tm_min<<":"<<t->tm_sec<<"\n";
+	os<<"AQI:"<<uint.aqi<<"\n";
+	os<<"pm25:"<<uint.pm25<<"-"<<uint.pm25_aqi<<" ";
+	os<<"pm10:"<<uint.pm10<<"-"<<uint.pm10_aqi<<" ";
+	os<<"o3:"<<uint.o3<<"-"<<uint.o3_aqi<<" ";
+	os<<"co:"<<uint.co<<"-"<<uint.co_aqi<<" ";
+	os<<"so2:"<<uint.so2<<"-"<<uint.so2_aqi<<" ";
+	os<<"no2:"<<uint.no2<<"-"<<uint.no2_aqi<<" ";
+}
+
+
+//////////////AQIJsonParser类实现/////////////
+bool AQIJsonParser::parse(const std::string &json,AQIUint &uint){
+	using namespace rapidjson;
+	memset(&uint,0,sizeof(uint));
+	Document d;
+	d.Parse(json.c_str());
+	Value::ConstMemberIterator it=d.FindMember("Head");
+	if(it==d.MemberEnd())
+		return false;
+	const Value &a=it->value;
+	if(!a.IsArray()||a.Empty())
+		return false;
+	const Value &data=a[0u];
+	if((it=data.FindMember("CREATE_DATE"))==data.MemberEnd())
+		return false;
+	auto t=get_time(it->value.GetString());
+	if(t==-1)
+		return false;
+	uint.time=t;
+	if((it=data.FindMember("AQI"))==data.MemberEnd())
+		return false;
+	uint.aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("CO"))!=data.MemberEnd())
+		uint.co=std::stod(it->value.GetString());
+	if((it=data.FindMember("COIAQI"))!=data.MemberEnd())
+		uint.co_aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("NO2"))!=data.MemberEnd())
+		uint.no2=std::stod(it->value.GetString());
+	if((it=data.FindMember("NO2IAQI"))!=data.MemberEnd())
+		uint.no2_aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("O3"))!=data.MemberEnd())
+		uint.o3=std::stod(it->value.GetString());
+	if((it=data.FindMember("O3IAQI"))!=data.MemberEnd())
+		uint.o3_aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("PM10"))!=data.MemberEnd())
+		uint.pm10=std::stod(it->value.GetString());
+	if((it=data.FindMember("PM10IAQI"))!=data.MemberEnd())
+		uint.pm10_aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("PM25"))!=data.MemberEnd())
+		uint.pm25=std::stod(it->value.GetString());
+	if((it=data.FindMember("PM25IAQI"))!=data.MemberEnd())
+		uint.pm25_aqi=std::stoi(it->value.GetString());
+	if((it=data.FindMember("SO2"))!=data.MemberEnd())
+		uint.so2=std::stod(it->value.GetString());
+	if((it=data.FindMember("SO2IAQI"))!=data.MemberEnd())
+		uint.so2_aqi=std::stoi(it->value.GetString());
+	return true;
+}
+
+time_t AQIJsonParser::get_time(const std::string &str){
+	std::string temp=str;
+	for(auto it=temp.begin();it!=temp.end();++it){
+		if(*it=='-'||*it==':')
+			*it=' ';
+	}
+	struct tm t;
+	memset(&t,0,sizeof(t));
+	std::istringstream sin(temp);
+	sin>>t.tm_year>>t.tm_mon>>t.tm_mday
+		>>t.tm_hour>>t.tm_min>>t.tm_sec;
+	t.tm_year-=1900;
+	t.tm_mon-=1;
+	return mktime(&t);
 }
 
 //////////////DbConf类实现////////////////////
