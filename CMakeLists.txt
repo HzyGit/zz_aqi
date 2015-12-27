@@ -7,4 +7,5 @@ include_directories(/usr/include/mysql /usr/include/mysql++)
 target_link_libraries(zz_aqi xml2 curl mysqlpp)
 
 install(FILES stations.xml db.xml DESTINATION /etc/zz_aqi/)
+install(FILES zzaqi.timer zzaqi.service DESTINATION /etc/systemd/system/)
 install(TARGETS zz_aqi RUNTIME DESTINATION bin)

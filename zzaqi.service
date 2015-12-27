@@ -1,0 +1,6 @@
+[Unit]
+Description=zz_aqi
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/zz_aqi
