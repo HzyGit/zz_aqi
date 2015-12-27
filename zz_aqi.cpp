@@ -14,6 +14,9 @@
 
 #include <mysql++.h>
 
+std::string g_station_conf("/etc/zz_aqi/stations.xml");
+std::string g_db_conf("/etc/zz_aqi/db.xml");
+
 /// @brief 站点类
 class Station{
 	public:
@@ -149,7 +152,7 @@ class AQIJsonParser {
 class AQIWriter {
 	public:
 		AQIWriter(const std::string &confpath);
-		void writer(const AQIUint &uint,const std::string &id);
+		void writer(const AQIUint &uint,const Station &st);
 		AQIWriter(AQIWriter &w)=delete;
 		AQIWriter & operator =(AQIWriter &w)=delete;
 	private:
@@ -192,8 +195,8 @@ static void test(){
 
 int main(int argc,char **argv){
 	RecorderAQI re;
-	re.load_station_set("stations.xml");
-	AQIWriter writer("db.xml");
+	re.load_station_set(g_station_conf);
+	AQIWriter writer(g_db_conf);
 	re.record(writer);
 }
 
@@ -218,11 +221,12 @@ void RecorderAQI::load_station_set(const std::string &path){
 void RecorderAQI::record(AQIWriter &writer){
 	for(auto it=_set._stations.begin();it!=_set._stations.end();++it){
 		std::string json;
-		this->_url.get_aqi_data(*it,json);
+		if(!this->_url.get_aqi_data(*it,json))
+			continue;
 		json.push_back('\0');
 		AQIUint uint;
-		this->_parser.parse(json,uint);
-		writer.writer(uint,it->get_id());
+		if(this->_parser.parse(json,uint))
+			writer.writer(uint,*it);
 	}
 }
 
@@ -235,8 +239,8 @@ AQIWriter::AQIWriter(const std::string &confpath) {
 				_dbconf.get_db_passwd().c_str());
 }
 
-void AQIWriter::writer(const AQIUint &uint,const std::string & id){
-	mysqlpp::Query query=_conn.query(uint.gen_sql(id).c_str());
+void AQIWriter::writer(const AQIUint &uint,const Station & st){
+	mysqlpp::Query query=_conn.query(uint.gen_sql(st.get_id()).c_str());
 	query.execute();
 }
 
@@ -421,7 +425,7 @@ bool AQIUrl::get_aqi_data(const std::string &url,std::string &aqi_data){
 	if(code!=0)
 		return false;
 	long res;
-	curl_easy_getinfo(_curl,CURLINFO_RESPONSE_CODE,&code);
+	curl_easy_getinfo(_curl,CURLINFO_RESPONSE_CODE,&res);
 	if(res>=200&&res<300)
 		return true;
 	return false;
